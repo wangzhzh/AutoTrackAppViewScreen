@@ -37,7 +37,7 @@ import java.util.Map;
 
 /*public*/ class SensorsDataPrivate {
     private final static String TAG = SensorsDataPrivate.class.getSimpleName();
-    private static List<Integer> mIgnoredActivities;
+    private static List<String> mIgnoredActivities;
     private static DbAdapter mDbAdapter;
     private static CountDownTimer countDownTimer;
     private static Activity currentActivity;
@@ -54,7 +54,7 @@ import java.util.Map;
             return;
         }
 
-        //mIgnoredActivities.add(activity.hashCode());
+        mIgnoredActivities.add(activity.getCanonicalName());
     }
 
     public static void removeIgnoredActivity(Class<?> activity) {
@@ -62,8 +62,8 @@ import java.util.Map;
             return;
         }
 
-        if (mIgnoredActivities.contains(activity.hashCode())) {
-           // mIgnoredActivities.remove(activity.hashCode());
+        if (mIgnoredActivities.contains(activity.getCanonicalName())) {
+            mIgnoredActivities.remove(activity.getCanonicalName());
         }
     }
 
