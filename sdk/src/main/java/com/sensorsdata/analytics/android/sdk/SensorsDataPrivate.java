@@ -9,13 +9,18 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.Keep;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,8 +36,12 @@ import java.util.Locale;
 import java.util.Map;
 
 /*public*/ class SensorsDataPrivate {
+    private final static String TAG = SensorsDataPrivate.class.getSimpleName();
     private static List<Integer> mIgnoredActivities;
-
+    private static DbAdapter mDbAdapter;
+    private static CountDownTimer countDownTimer;
+    private static Activity currentActivity;
+    private final static int SESSION_INTERVAL_TIME = 30 * 1000;
     static {
         mIgnoredActivities = new ArrayList<>();
     }
@@ -45,7 +54,7 @@ import java.util.Map;
             return;
         }
 
-        mIgnoredActivities.add(activity.hashCode());
+        //mIgnoredActivities.add(activity.hashCode());
     }
 
     public static void removeIgnoredActivity(Class<?> activity) {
@@ -54,7 +63,7 @@ import java.util.Map;
         }
 
         if (mIgnoredActivities.contains(activity.hashCode())) {
-            mIgnoredActivities.remove(activity.hashCode());
+           // mIgnoredActivities.remove(activity.hashCode());
         }
     }
 
@@ -162,21 +171,83 @@ import java.util.Map;
     }
 
     /**
+     * Track $AppStart 事件
+     *
+     * @param activity
+     */
+    private static void trackAppStart(Activity activity){
+        try {
+            if (activity == null) {
+                return;
+            }
+            if (mIgnoredActivities.contains(activity.getClass().hashCode())) {
+                return;
+            }
+            JSONObject properties = new JSONObject();
+            properties.put("$activity", activity.getClass().getCanonicalName());
+            properties.put("title", getActivityTitle(activity));
+            SensorsDataAPI.getInstance().track("$AppStart", properties);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Track $AppEnd 事件
+     *
+     * @param activity
+     */
+    private static void trackAppEnd(Activity activity){
+        try {
+            if (activity == null) {
+                return;
+            }
+            if (mIgnoredActivities.contains(activity.getClass().hashCode())) {
+                return;
+            }
+            JSONObject properties = new JSONObject();
+            properties.put("$activity", activity.getClass().getCanonicalName());
+            properties.put("title", getActivityTitle(activity));
+            SensorsDataAPI.getInstance().track("$AppEnd", properties);
+            mDbAdapter.commitAppEndEventState(true);
+            currentActivity = null;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
      * 注册 Application.ActivityLifecycleCallbacks
      *
      * @param application Application
      */
     @TargetApi(14)
     public static void registerActivityLifecycleCallbacks(Application application) {
+        mDbAdapter = new DbAdapter(application.getApplicationContext(),application.getPackageName());
+        countDownTimer = new CountDownTimer(SESSION_INTERVAL_TIME, 10 * 1000) {
+            @Override
+            public void onTick(long l) {
+                Log.d(TAG,"onTick:" + l);
+            }
+
+            @Override
+            public void onFinish() {
+                trackAppEnd(currentActivity);
+            }
+        };
         application.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle bundle) {
-
             }
 
             @Override
             public void onActivityStarted(Activity activity) {
-
+                mDbAdapter.commitAppStart(true);
+                if(mDbAdapter.getAppEndEventState()){
+                    mDbAdapter.commitAppEndEventState(false);
+                    trackAppStart(activity);
+                }
             }
 
             @Override
@@ -186,12 +257,12 @@ import java.util.Map;
 
             @Override
             public void onActivityPaused(Activity activity) {
-
+                currentActivity = activity;
+                countDownTimer.start();
             }
 
             @Override
             public void onActivityStopped(Activity activity) {
-
             }
 
             @Override
@@ -201,9 +272,25 @@ import java.util.Map;
 
             @Override
             public void onActivityDestroyed(Activity activity) {
-
             }
         });
+    }
+
+    /**
+     * 注册 AppStart 的监听
+     *
+     * @param application
+     */
+    public static void registerActivityStateObserver(Application application){
+        application.getContentResolver().registerContentObserver(mDbAdapter.getmAppStart(),
+                false, new ContentObserver(new Handler()) {
+                    @Override
+                    public void onChange(boolean selfChange, Uri uri) {
+                        if (mDbAdapter.getmAppStart().equals(uri)) {
+                            countDownTimer.cancel();
+                        }
+                    }
+                });
     }
 
     public static Map<String, Object> getDeviceInfo(Context context) {

@@ -42,6 +42,7 @@ public class SensorsDataAPI {
         mDeviceId = SensorsDataPrivate.getAndroidID(application.getApplicationContext());
         mDeviceInfo = SensorsDataPrivate.getDeviceInfo(application.getApplicationContext());
         SensorsDataPrivate.registerActivityLifecycleCallbacks(application);
+        SensorsDataPrivate.registerActivityStateObserver(application);
     }
 
     /**
