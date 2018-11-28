@@ -31,7 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /*public*/ class SensorsDataPrivate {
-    private static List<Integer> mIgnoredActivities;
+    private static List<String> mIgnoredActivities;
 
     static {
         mIgnoredActivities = new ArrayList<>();
@@ -45,7 +45,7 @@ import java.util.Map;
             return;
         }
 
-        mIgnoredActivities.add(activity.hashCode());
+        mIgnoredActivities.add(activity.getClass().getCanonicalName());
     }
 
     public static void removeIgnoredActivity(Class<?> activity) {
@@ -53,8 +53,8 @@ import java.util.Map;
             return;
         }
 
-        if (mIgnoredActivities.contains(activity.hashCode())) {
-            mIgnoredActivities.remove(activity.hashCode());
+        if (mIgnoredActivities.contains(activity.getClass().getCanonicalName())) {
+            mIgnoredActivities.remove(activity.getClass().getCanonicalName());
         }
     }
 
@@ -149,12 +149,12 @@ import java.util.Map;
             if (activity == null) {
                 return;
             }
-            if (mIgnoredActivities.contains(activity.getClass().hashCode())) {
+            if (mIgnoredActivities.contains(activity.getClass().getCanonicalName())) {
                 return;
             }
             JSONObject properties = new JSONObject();
             properties.put("$activity", activity.getClass().getCanonicalName());
-            properties.put("title", getActivityTitle(activity));
+            properties.put("$title", getActivityTitle(activity));
             SensorsDataAPI.getInstance().track("$AppViewScreen", properties);
         } catch (Exception e) {
             e.printStackTrace();

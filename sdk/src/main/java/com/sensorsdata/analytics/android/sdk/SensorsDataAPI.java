@@ -45,7 +45,7 @@ public class SensorsDataAPI {
     }
 
     /**
-     * 指定某个 activity 不被 AutoTrack
+     * 指定不采集哪个 Activity 的页面浏览事件
      *
      * @param activity Activity
      */
