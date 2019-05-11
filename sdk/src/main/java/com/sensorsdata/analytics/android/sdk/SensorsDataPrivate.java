@@ -45,7 +45,7 @@ import java.util.Map;
             return;
         }
 
-        mIgnoredActivities.add(activity.getClass().getCanonicalName());
+        mIgnoredActivities.add(activity.getCanonicalName());
     }
 
     public static void removeIgnoredActivity(Class<?> activity) {
@@ -53,8 +53,8 @@ import java.util.Map;
             return;
         }
 
-        if (mIgnoredActivities.contains(activity.getClass().getCanonicalName())) {
-            mIgnoredActivities.remove(activity.getClass().getCanonicalName());
+        if (mIgnoredActivities.contains(activity.getCanonicalName())) {
+            mIgnoredActivities.remove(activity.getCanonicalName());
         }
     }
 
